@@ -421,6 +421,25 @@ run_setup_wizard() {
 
     cd "$TT_INSTALL_DIR"
     ./setup_wizard || die "$(t wizard_fail)"
+
+    # Fix relative paths in vpn.toml and hosts.toml to absolute paths.
+    # The Docker backend mounts TT_INSTALL_DIR as /trusttunnel, so paths must
+    # be absolute and use /trusttunnel/ prefix to work both in systemd and Docker.
+    ln -sfn "$TT_INSTALL_DIR" /trusttunnel
+
+    local vpn_toml="$TT_INSTALL_DIR/vpn.toml"
+    local hosts_toml="$TT_INSTALL_DIR/hosts.toml"
+
+    if [[ -f "$vpn_toml" ]]; then
+        sed -i "s|credentials_file = \"credentials.toml\"|credentials_file = \"/trusttunnel/credentials.toml\"|" "$vpn_toml"
+        sed -i "s|rules_file = \"rules.toml\"|rules_file = \"/trusttunnel/rules.toml\"|" "$vpn_toml"
+    fi
+
+    if [[ -f "$hosts_toml" ]]; then
+        sed -i "s|cert_chain_path = \"certs/cert.pem\"|cert_chain_path = \"/trusttunnel/certs/cert.pem\"|" "$hosts_toml"
+        sed -i "s|private_key_path = \"certs/key.pem\"|private_key_path = \"/trusttunnel/certs/key.pem\"|" "$hosts_toml"
+    fi
+
     success "$(t wizard_ok)"
 
 }
