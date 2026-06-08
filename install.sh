@@ -244,7 +244,7 @@ choose_language() {
 TT_INSTALL_DIR="/opt/trusttunnel"
 WEBUI_DIR="/opt/trusttunnel-webui"
 WEBUI_REPO="https://github.com/iamnovye/trusttunnel-webui"
-WEBUI_BRANCH="claude/eager-newton-t257ev"
+WEBUI_BRANCH="main"
 TT_GITHUB="https://github.com/TrustTunnel/TrustTunnel"
 
 ARCH=""
