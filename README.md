@@ -1,4 +1,4 @@
-# TrustTunnel self-steal
+# TrustTunnel | Self-steal
 
 Веб-панель администратора для [TrustTunnel VPN](https://github.com/TrustTunnel/TrustTunnel) с сайтом-камуфляжем.
 
