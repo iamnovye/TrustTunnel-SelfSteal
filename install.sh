@@ -494,7 +494,7 @@ collect_webui_config() {
     sep
     echo ""
 
-    # ── Server address ──
+    # ── Server address / domain ──
     local default_ip
     default_ip=$(curl -fsSL --max-time 5 https://api.ipify.org 2>/dev/null \
         || hostname -I | awk '{print $1}')
@@ -502,12 +502,6 @@ collect_webui_config() {
     ask "$(t ask_server_addr) [${default_ip}]:"
     read -r input
     SERVER_ADDRESS="${input:-$default_ip}"
-
-    # ── Domain ──
-    echo ""
-    ask "$(t ask_domain)"
-    read -r input
-    PANEL_DOMAIN="${input:-$SERVER_ADDRESS}"
 
     # ── Secret panel path ──
     echo ""
@@ -519,7 +513,7 @@ collect_webui_config() {
     default_path=$(openssl rand -hex 6 2>/dev/null || tr -dc 'a-z0-9' < /dev/urandom | head -c 12)
 
     ask "$(t ask_secret_path) [${default_path}]:"
-    echo -e "  ${DIM}$(t panel_url_hint) http(s)://${PANEL_DOMAIN}/${default_path}/${NC}"
+    echo -e "  ${DIM}$(t panel_url_hint) https://${SERVER_ADDRESS}/${default_path}/${NC}"
     read -r input
     PANEL_PATH="${input:-$default_path}"
     PANEL_PATH="${PANEL_PATH#/}"; PANEL_PATH="${PANEL_PATH%/}"
@@ -551,10 +545,24 @@ collect_webui_config() {
 deploy_webui() {
     info "$(t deploy_deploying)"
 
+    # Always cd to a safe dir before removing WEBUI_DIR
+    # (running rm -rf from inside the target dir breaks the shell)
+    cd /root
+
     if [[ -d "$WEBUI_DIR/.git" ]]; then
-        info "$(t deploy_updating)"
-        git -C "$WEBUI_DIR" pull --ff-only origin main 2>/dev/null || true
-    else
+        # Check if existing clone is on the right branch; if not, reclone
+        local current_branch
+        current_branch=$(git -C "$WEBUI_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+        if [[ "$current_branch" != "$WEBUI_BRANCH" ]]; then
+            warn "Existing clone is on '$current_branch', need '$WEBUI_BRANCH' — recloning..."
+            rm -rf "$WEBUI_DIR"
+        else
+            info "$(t deploy_updating)"
+            git -C "$WEBUI_DIR" pull --ff-only origin "$WEBUI_BRANCH" 2>/dev/null || true
+        fi
+    fi
+
+    if [[ ! -d "$WEBUI_DIR/.git" ]]; then
         info "$(t deploy_cloning)"
         git clone --depth=1 --branch "$WEBUI_BRANCH" "$WEBUI_REPO" "$WEBUI_DIR" \
             || die "$(t deploy_clone_fail)"
