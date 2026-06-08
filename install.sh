@@ -423,32 +423,6 @@ run_setup_wizard() {
     ./setup_wizard || die "$(t wizard_fail)"
     success "$(t wizard_ok)"
 
-    patch_reverse_proxy
-}
-
-# Append [reverse_proxy] to vpn.toml so TrustTunnel forwards non-VPN
-# HTTPS traffic to the local nginx decoy site on port 8080.
-patch_reverse_proxy() {
-    local vpn_toml="$TT_INSTALL_DIR/vpn.toml"
-    [[ ! -f "$vpn_toml" ]] && return 0
-
-    if grep -q '\[reverse_proxy\]' "$vpn_toml" 2>/dev/null; then
-        return 0  # already patched
-    fi
-
-    cat >> "$vpn_toml" <<'EOF'
-
-# Non-VPN HTTPS traffic is forwarded to the local decoy/panel nginx.
-[reverse_proxy]
-server_address = "127.0.0.1:8080"
-path_mask = "/"
-EOF
-
-    if [[ "$LANG_CHOICE" == "ru" ]]; then
-        success "vpn.toml: добавлен [reverse_proxy] → nginx на 127.0.0.1:8080"
-    else
-        success "vpn.toml: added [reverse_proxy] → nginx on 127.0.0.1:8080"
-    fi
 }
 
 # ─────────────────────────────────────────────
@@ -578,9 +552,6 @@ TRUSTTUNNEL_DIR=${TT_INSTALL_DIR}
 PANEL_PATH=${PANEL_PATH}
 EOF
     success "$(t deploy_env_ok)"
-
-    # Restart TrustTunnel so it picks up the [reverse_proxy] change in vpn.toml
-    systemctl restart trusttunnel 2>/dev/null || true
 
     info "$(t deploy_starting)"
     cd "$WEBUI_DIR"
