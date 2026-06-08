@@ -441,6 +441,7 @@ patch_reverse_proxy() {
 # Non-VPN HTTPS traffic is forwarded to the local decoy/panel nginx.
 [reverse_proxy]
 server_address = "127.0.0.1:8080"
+path_mask = "/"
 EOF
 
     if [[ "$LANG_CHOICE" == "ru" ]]; then
