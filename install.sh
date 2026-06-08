@@ -446,17 +446,19 @@ install_tt_service() {
 #  Detect credentials path
 # ─────────────────────────────────────────────
 detect_config_paths() {
-    CREDS_FILE="$TT_INSTALL_DIR/credentials"
+    CREDS_FILE="$TT_INSTALL_DIR/credentials.toml"
     local vpn_toml="$TT_INSTALL_DIR/vpn.toml"
     [[ ! -f "$vpn_toml" ]] && return 0
 
     local creds
-    creds=$(grep -E '^\s*credentials\s*=' "$vpn_toml" 2>/dev/null \
+    creds=$(grep -E '^\s*credentials_file\s*=' "$vpn_toml" 2>/dev/null \
         | head -1 | sed 's/.*=\s*"\(.*\)".*/\1/' || echo "")
-    if [[ -n "$creds" && -f "$creds" ]]; then
+    if [[ -n "$creds" ]]; then
+        # Make absolute if relative
+        [[ "$creds" != /* ]] && creds="$TT_INSTALL_DIR/$creds"
         CREDS_FILE="$creds"
-        info "$(t creds_detected) $CREDS_FILE"
     fi
+    info "$(t creds_detected) $CREDS_FILE"
 }
 
 # ─────────────────────────────────────────────

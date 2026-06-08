@@ -10,7 +10,7 @@ services:
       SECRET_KEY: ${SECRET_KEY}
       VPN_TOML: /trusttunnel/vpn.toml
       HOSTS_TOML: /trusttunnel/hosts.toml
-      CREDENTIALS_FILE: ${CREDENTIALS_FILE:-/trusttunnel/credentials}
+      CREDENTIALS_FILE: ${CREDENTIALS_FILE:-/trusttunnel/credentials.toml}
       TT_BINARY: /trusttunnel/trusttunnel_endpoint
       SERVER_ADDRESS: ${SERVER_ADDRESS}
     volumes:

@@ -15,7 +15,7 @@ ADMIN_PASS = os.environ.get("ADMIN_PASS", "changeme")
 
 VPN_TOML = os.environ.get("VPN_TOML", "/trusttunnel/vpn.toml")
 HOSTS_TOML = os.environ.get("HOSTS_TOML", "/trusttunnel/hosts.toml")
-CREDENTIALS_FILE = os.environ.get("CREDENTIALS_FILE", "/trusttunnel/credentials")
+CREDENTIALS_FILE = os.environ.get("CREDENTIALS_FILE", "/trusttunnel/credentials.toml")
 TT_BINARY = os.environ.get("TT_BINARY", "/trusttunnel/trusttunnel_endpoint")
 SERVER_ADDRESS = os.environ.get("SERVER_ADDRESS", "")
 
@@ -30,40 +30,51 @@ def require_auth(f):
 
 
 def _read_credentials():
-    """Returns list of usernames from credentials file."""
+    """Returns list of (username, password) from TOML credentials file."""
     if not os.path.exists(CREDENTIALS_FILE):
         return []
     users = []
+    current = {}
     with open(CREDENTIALS_FILE) as f:
         for line in f:
             line = line.strip()
-            if line and not line.startswith("#"):
-                parts = line.split(":", 1)
-                if parts:
-                    users.append(parts[0].strip())
+            if line == "[[client]]":
+                if current:
+                    users.append(current)
+                current = {}
+            elif line.startswith("username"):
+                m = re.match(r'username\s*=\s*"([^"]*)"', line)
+                if m:
+                    current["username"] = m.group(1)
+            elif line.startswith("password"):
+                m = re.match(r'password\s*=\s*"([^"]*)"', line)
+                if m:
+                    current["password"] = m.group(1)
+    if current:
+        users.append(current)
     return users
 
 
+def _list_usernames():
+    return [u["username"] for u in _read_credentials()]
+
+
 def _user_exists(username):
-    return username in _read_credentials()
+    return username in _list_usernames()
 
 
 def _add_user_to_credentials(username, password):
-    """Appends user:password to credentials file."""
     with open(CREDENTIALS_FILE, "a") as f:
-        f.write(f"{username}:{password}\n")
+        f.write(f'\n[[client]]\nusername = "{username}"\npassword = "{password}"\n')
 
 
 def _remove_user_from_credentials(username):
-    """Removes all lines starting with username: from credentials file."""
     if not os.path.exists(CREDENTIALS_FILE):
         return
-    with open(CREDENTIALS_FILE) as f:
-        lines = f.readlines()
+    users = [u for u in _read_credentials() if u["username"] != username]
     with open(CREDENTIALS_FILE, "w") as f:
-        for line in lines:
-            if not line.startswith(f"{username}:"):
-                f.write(line)
+        for u in users:
+            f.write(f'[[client]]\nusername = "{u["username"]}"\npassword = "{u["password"]}"\n\n')
 
 
 @app.route("/api/login", methods=["POST"])
@@ -84,7 +95,7 @@ def logout():
 @app.route("/api/users", methods=["GET"])
 @require_auth
 def list_users():
-    return jsonify({"users": _read_credentials()})
+    return jsonify({"users": _list_usernames()})
 
 
 @app.route("/api/users", methods=["POST"])
@@ -142,11 +153,9 @@ def _generate_link(username):
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         output = result.stdout + result.stderr
-        # Extract tt:// deep-link from output
         match = re.search(r"tt://[^\s]+", output)
         if match:
             return match.group(0)
-        # Return full output trimmed if no explicit deep-link found
         return output.strip() or None
     except Exception:
         return None
