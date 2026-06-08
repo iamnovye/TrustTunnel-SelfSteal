@@ -387,6 +387,37 @@ run_setup_wizard() {
     echo -e "${DIM}$(t wizard_hint)${NC}"
     echo ""
 
+    # Print cheat-sheet so Russian users know what each wizard prompt means
+    if [[ "$LANG_CHOICE" == "ru" ]]; then
+        echo ""
+        echo -e "${YELLOW}${BOLD}  Шпаргалка — что спросит мастер настройки:${NC}"
+        sep
+        echo -e "  ${BOLD}Listen address${NC} — адрес и порт, на котором слушает VPN"
+        echo -e "    ${DIM}Рекомендуется: 0.0.0.0:443${NC}"
+        echo ""
+        echo -e "  ${BOLD}Credentials file path${NC} — путь к файлу с логинами пользователей"
+        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию (Enter)${NC}"
+        echo ""
+        echo -e "  ${BOLD}Username / Password${NC} — логин и пароль первого VPN-пользователя"
+        echo -e "    ${DIM}Можно добавить несколько, ответив 'y' на 'Add one more user?'${NC}"
+        echo ""
+        echo -e "  ${BOLD}Rules file path${NC} — файл правил фильтрации подключений"
+        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию (Enter)${NC}"
+        echo ""
+        echo -e "  ${BOLD}Certificate${NC} — сертификат TLS для VPN-трафика"
+        echo -e "    ${DIM}1 = Let's Encrypt (нужен домен), 2 = самоподписанный, 3 = свой файл${NC}"
+        echo ""
+        echo -e "  ${BOLD}Settings / Hosts file path${NC} — пути конфиг-файлов"
+        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию (Enter)${NC}"
+        sep
+        echo ""
+        echo -e "  ${DIM}Мастер настройки запускается на английском — это нормально.${NC}"
+        echo -e "  ${DIM}Используйте шпаргалку выше чтобы понимать каждый вопрос.${NC}"
+        echo ""
+        ask "Нажмите Enter чтобы запустить мастер настройки..."
+        read -r _
+    fi
+
     cd "$TT_INSTALL_DIR"
     ./setup_wizard || die "$(t wizard_fail)"
     success "$(t wizard_ok)"
