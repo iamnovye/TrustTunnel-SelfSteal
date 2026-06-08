@@ -29,13 +29,14 @@ ARCH=""
 TT_VERSION=""
 TT_TARBALL_URL=""
 
-PANEL_DOMAIN=""
+PANEL_DOMAIN="_"
 PANEL_ADMIN_USER="admin"
 PANEL_ADMIN_PASS=""
 PANEL_SECRET_KEY=""
 SERVER_ADDRESS=""
-PANEL_PORT="8080"
-USE_HTTPS="n"
+PANEL_PATH=""
+USE_HTTPS="false"
+CREDS_FILE=""
 
 # ─────────────────────────────────────────────
 #  Preflight checks
@@ -73,11 +74,12 @@ install_deps() {
     apt-get update -qq
 
     local pkgs=()
-    command -v curl  &>/dev/null || pkgs+=(curl)
-    command -v wget  &>/dev/null || pkgs+=(wget)
-    command -v tar   &>/dev/null || pkgs+=(tar)
-    command -v jq    &>/dev/null || pkgs+=(jq)
-    command -v git   &>/dev/null || pkgs+=(git)
+    command -v curl   &>/dev/null || pkgs+=(curl)
+    command -v wget   &>/dev/null || pkgs+=(wget)
+    command -v tar    &>/dev/null || pkgs+=(tar)
+    command -v jq     &>/dev/null || pkgs+=(jq)
+    command -v git    &>/dev/null || pkgs+=(git)
+    command -v gettext &>/dev/null || pkgs+=(gettext-base)
 
     if ! command -v docker &>/dev/null; then
         info "Installing Docker..."
@@ -102,10 +104,9 @@ install_deps() {
 fetch_latest_version() {
     info "Fetching latest TrustTunnel release..."
     TT_VERSION=$(curl -fsSL "https://api.github.com/repos/TrustTunnel/TrustTunnel/releases/latest" \
-        | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\(.*\)".*/\1/')
+        | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\(.*\)".*/\1/') || true
 
     if [[ -z "$TT_VERSION" ]]; then
-        # Fallback if GitHub API rate-limited
         TT_VERSION="v1.0.33"
         warn "Could not fetch latest version, using fallback $TT_VERSION"
     fi
@@ -136,7 +137,6 @@ download_trusttunnel() {
     info "Extracting..."
     tar -xzf "$tmpdir/trusttunnel.tar.gz" -C "$tmpdir"
 
-    # Find the extracted dir (may vary between releases)
     local extract_dir
     extract_dir=$(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d | head -1)
     [[ -z "$extract_dir" ]] && extract_dir="$tmpdir"
@@ -168,13 +168,12 @@ run_setup_wizard() {
     echo ""
 
     cd "$TT_INSTALL_DIR"
-    # Run the upstream interactive setup wizard
     ./setup_wizard || die "setup_wizard failed"
     success "TrustTunnel configured"
 }
 
 # ─────────────────────────────────────────────
-#  Systemd service for TrustTunnel endpoint
+#  Systemd service
 # ─────────────────────────────────────────────
 install_tt_service() {
     if [[ ! -f "$TT_INSTALL_DIR/trusttunnel.service.template" ]]; then
@@ -191,53 +190,85 @@ install_tt_service() {
 }
 
 # ─────────────────────────────────────────────
-#  Detect config file paths from vpn.toml
+#  Detect credentials path from vpn.toml
 # ─────────────────────────────────────────────
 detect_config_paths() {
+    CREDS_FILE="$TT_INSTALL_DIR/credentials"
     local vpn_toml="$TT_INSTALL_DIR/vpn.toml"
-    if [[ ! -f "$vpn_toml" ]]; then
-        warn "vpn.toml not found — using default config paths"
-        return 0
-    fi
+    [[ ! -f "$vpn_toml" ]] && return 0
 
-    # Extract credentials path if present
     local creds
     creds=$(grep -E '^\s*credentials\s*=' "$vpn_toml" 2>/dev/null \
         | head -1 | sed 's/.*=\s*"\(.*\)".*/\1/' || echo "")
     if [[ -n "$creds" && -f "$creds" ]]; then
-        info "Detected credentials file: $creds"
         CREDS_FILE="$creds"
-    else
-        CREDS_FILE="$TT_INSTALL_DIR/credentials"
+        info "Detected credentials file: $CREDS_FILE"
     fi
 }
 
-CREDS_FILE="$TT_INSTALL_DIR/credentials"
-
 # ─────────────────────────────────────────────
-#  Collect WebUI config from user
+#  Collect WebUI config
 # ─────────────────────────────────────────────
 collect_webui_config() {
     echo ""
     sep
-    echo -e "${BOLD}  TrustTunnel WebUI Configuration${NC}"
+    echo -e "${BOLD}  Web Panel Configuration${NC}"
     sep
     echo ""
 
-    # Server address
+    # ── Server address ──
     local default_ip
-    default_ip=$(curl -fsSL --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')
+    default_ip=$(curl -fsSL --max-time 5 https://api.ipify.org 2>/dev/null \
+        || hostname -I | awk '{print $1}')
 
     ask "Server public IP or domain (used for tt:// links) [${default_ip}]:"
     read -r input
     SERVER_ADDRESS="${input:-$default_ip}"
 
-    # Panel port
-    ask "Web panel HTTP port [8080]:"
+    # ── Domain ──
+    echo ""
+    ask "Domain for the web panel (e.g. media.example.com). Leave empty to use IP:"
     read -r input
-    PANEL_PORT="${input:-8080}"
+    if [[ -n "$input" ]]; then
+        PANEL_DOMAIN="$input"
+    else
+        PANEL_DOMAIN="$SERVER_ADDRESS"
+    fi
 
-    # Admin credentials
+    # ── HTTPS ──
+    echo ""
+    if [[ "$PANEL_DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || [[ "$PANEL_DOMAIN" == "_" ]]; then
+        warn "HTTPS requires a real domain — skipping (using HTTP)"
+        USE_HTTPS="false"
+    else
+        ask "Enable HTTPS with Let's Encrypt for ${PANEL_DOMAIN}? [Y/n]:"
+        read -r input
+        if [[ ! "$input" =~ ^[Nn]$ ]]; then
+            USE_HTTPS="true"
+        fi
+    fi
+
+    # ── Secret panel path ──
+    echo ""
+    echo -e "  ${BOLD}Camouflage / decoy setup${NC}"
+    echo -e "  ${DIM}Your domain will show a fake video streaming site (StreamVault)."
+    echo -e "  The real admin panel is only accessible at a secret path.${NC}"
+    echo ""
+
+    local default_path
+    default_path=$(openssl rand -hex 6 2>/dev/null || cat /dev/urandom | tr -dc 'a-z0-9' | head -c 12)
+
+    ask "Secret panel path (the part after your domain) [${default_path}]:"
+    echo -e "  ${DIM}Panel URL will be: http(s)://${PANEL_DOMAIN}/${default_path}/${NC}"
+    read -r input
+    PANEL_PATH="${input:-$default_path}"
+    # Strip leading/trailing slashes
+    PANEL_PATH="${PANEL_PATH#/}"
+    PANEL_PATH="${PANEL_PATH%/}"
+    [[ -z "$PANEL_PATH" ]] && PANEL_PATH="$default_path"
+
+    # ── Admin credentials ──
+    echo ""
     ask "Admin username for web panel [admin]:"
     read -r input
     PANEL_ADMIN_USER="${input:-admin}"
@@ -250,18 +281,7 @@ collect_webui_config() {
         warn "Password must be at least 8 characters"
     done
 
-    # HTTPS
-    ask "Enable HTTPS with Let's Encrypt? Requires a real domain pointing to this server. [y/N]:"
-    read -r input
-    USE_HTTPS="${input:-n}"
-
-    if [[ "$USE_HTTPS" =~ ^[Yy]$ ]]; then
-        ask "Domain name for the web panel (e.g. panel.example.com):"
-        read -r PANEL_DOMAIN
-        [[ -z "$PANEL_DOMAIN" ]] && die "Domain cannot be empty when HTTPS is enabled"
-    fi
-
-    # Generate secret key
+    # ── Secret key ──
     PANEL_SECRET_KEY=$(openssl rand -hex 32 2>/dev/null || \
         tr -dc 'a-f0-9' < /dev/urandom | head -c 64)
 
@@ -284,33 +304,28 @@ deploy_webui() {
             || die "Failed to clone WebUI repository"
     fi
 
-    # Write .env
+    # ── Write .env ──
     cat > "$WEBUI_DIR/.env" <<EOF
 ADMIN_USER=${PANEL_ADMIN_USER}
 ADMIN_PASS=${PANEL_ADMIN_PASS}
 SECRET_KEY=${PANEL_SECRET_KEY}
 SERVER_ADDRESS=${SERVER_ADDRESS}
 TRUSTTUNNEL_DIR=${TT_INSTALL_DIR}
+PANEL_PATH=${PANEL_PATH}
+DOMAIN=${PANEL_DOMAIN}
+USE_HTTPS=${USE_HTTPS}
 EOF
-
     success ".env written"
 
-    # Patch nginx to use correct port (if custom)
-    local nginx_conf="$WEBUI_DIR/nginx/nginx.conf"
-    if [[ "$PANEL_PORT" != "80" ]]; then
-        sed -i "s/listen 80;/listen ${PANEL_PORT};/" "$nginx_conf"
-    fi
-
-    # HTTPS setup
-    if [[ "$USE_HTTPS" =~ ^[Yy]$ ]]; then
+    # ── HTTPS: obtain certificate before containers start ──
+    if [[ "$USE_HTTPS" == "true" ]]; then
         setup_https
+        # Uncomment letsencrypt volume in compose
+        sed -i 's|# - /etc/letsencrypt|- /etc/letsencrypt|g' "$WEBUI_DIR/docker-compose.yml"
     fi
 
-    # Patch docker-compose ports
-    sed -i "s/\"80:80\"/\"${PANEL_PORT}:${PANEL_PORT}\"/" "$WEBUI_DIR/docker-compose.yml"
-
-    # Build and start
-    info "Starting containers..."
+    # ── Start containers ──
+    info "Building and starting containers..."
     cd "$WEBUI_DIR"
     docker compose pull --quiet 2>/dev/null || true
     docker compose up -d --build
@@ -319,113 +334,67 @@ EOF
 }
 
 setup_https() {
-    info "Setting up Let's Encrypt for ${PANEL_DOMAIN}..."
+    info "Obtaining Let's Encrypt certificate for ${PANEL_DOMAIN}..."
 
     if ! command -v certbot &>/dev/null; then
         apt-get install -y -qq certbot
     fi
 
-    # Temporary plain HTTP on port 80 for ACME challenge
-    # (if main panel is on different port, port 80 should be free)
     certbot certonly --standalone \
         --non-interactive \
         --agree-tos \
         --register-unsafely-without-email \
         -d "$PANEL_DOMAIN" \
-        || die "certbot failed — make sure port 80 is open and DNS points to this server"
+        || die "certbot failed — check that port 80 is open and DNS points to this server"
 
-    # Patch nginx.conf to enable HTTPS
-    local nginx_conf="$WEBUI_DIR/nginx/nginx.conf"
-    # Replace server block with full HTTPS config
-    cat > "$nginx_conf" <<NGINXEOF
-server {
-    listen 80;
-    server_name ${PANEL_DOMAIN};
-    return 301 https://\$host\$request_uri;
-}
+    # Auto-renewal cron
+    (crontab -l 2>/dev/null; \
+     echo "0 3 * * * certbot renew --quiet && docker compose -f $WEBUI_DIR/docker-compose.yml restart frontend") \
+        | sort -u | crontab -
 
-server {
-    listen 443 ssl http2;
-    server_name ${PANEL_DOMAIN};
-
-    ssl_certificate     /etc/letsencrypt/live/${PANEL_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${PANEL_DOMAIN}/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_ciphers         HIGH:!aNULL:!MD5;
-
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location /api/ {
-        proxy_pass http://backend:5000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 30s;
-    }
-
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-}
-NGINXEOF
-
-    # Mount letsencrypt in docker-compose
-    sed -i '/# - \/etc\/letsencrypt/s/# //' "$WEBUI_DIR/docker-compose.yml"
-
-    # Patch ports in compose for 80+443
-    sed -i 's/"443:443"/"443:443"/' "$WEBUI_DIR/docker-compose.yml" # already there
-    # Ensure port 80 is also exposed (redirect)
-    # The compose already has 80 and 443 exposed by default
-
-    # Cron for renewal
-    (crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet && docker compose -f $WEBUI_DIR/docker-compose.yml restart frontend") \
-        | crontab -
-
-    success "HTTPS configured for $PANEL_DOMAIN"
+    success "Certificate obtained for $PANEL_DOMAIN"
 }
 
 # ─────────────────────────────────────────────
 #  Summary
 # ─────────────────────────────────────────────
 print_summary() {
-    local url
-    if [[ "$USE_HTTPS" =~ ^[Yy]$ ]]; then
-        url="https://${PANEL_DOMAIN}"
-    else
-        local ip="${SERVER_ADDRESS}"
-        if [[ "$PANEL_PORT" == "80" ]]; then
-            url="http://${ip}"
-        else
-            url="http://${ip}:${PANEL_PORT}"
-        fi
-    fi
+    local proto="http"
+    [[ "$USE_HTTPS" == "true" ]] && proto="https"
+
+    local base_url="${proto}://${PANEL_DOMAIN}"
+    local panel_url="${base_url}/${PANEL_PATH}/"
 
     echo ""
     echo -e "${GREEN}${BOLD}"
-    echo "  ╔══════════════════════════════════════════╗"
-    echo "  ║       Installation complete! 🎉          ║"
-    echo "  ╚══════════════════════════════════════════╝"
+    echo "  ╔══════════════════════════════════════════════════════╗"
+    echo "  ║          Installation complete!                      ║"
+    echo "  ╚══════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     sep
     echo -e "  ${BOLD}TrustTunnel endpoint:${NC}"
-    echo -e "    Directory : ${CYAN}$TT_INSTALL_DIR${NC}"
-    echo -e "    Service   : ${CYAN}systemctl status trusttunnel${NC}"
+    echo -e "    Dir     : ${CYAN}$TT_INSTALL_DIR${NC}"
+    echo -e "    Service : ${CYAN}systemctl status trusttunnel${NC}"
     echo ""
-    echo -e "  ${BOLD}Web Panel:${NC}"
-    echo -e "    URL       : ${CYAN}${url}${NC}"
-    echo -e "    Login     : ${CYAN}${PANEL_ADMIN_USER}${NC}"
-    echo -e "    Password  : ${CYAN}${PANEL_ADMIN_PASS}${NC}"
+    echo -e "  ${BOLD}Camouflage site (visible to everyone):${NC}"
+    echo -e "    URL     : ${CYAN}${base_url}/${NC}"
+    echo -e "    Shows   : StreamVault — fake video streaming site"
+    echo ""
+    echo -e "  ${BOLD}Admin panel (secret):${NC}"
+    echo -e "    URL     : ${GREEN}${BOLD}${panel_url}${NC}"
+    echo -e "    Login   : ${CYAN}${PANEL_ADMIN_USER}${NC}"
+    echo -e "    Password: ${CYAN}${PANEL_ADMIN_PASS}${NC}"
     echo ""
     echo -e "  ${BOLD}Useful commands:${NC}"
     echo -e "    ${DIM}# View logs${NC}"
     echo -e "    docker compose -f $WEBUI_DIR/docker-compose.yml logs -f"
-    echo -e "    ${DIM}# Restart panel${NC}"
+    echo -e "    ${DIM}# Restart${NC}"
     echo -e "    docker compose -f $WEBUI_DIR/docker-compose.yml restart"
     echo -e "    ${DIM}# TrustTunnel service${NC}"
     echo -e "    systemctl status trusttunnel"
     sep
+    echo ""
+    echo -e "  ${YELLOW}${BOLD}Keep the panel URL secret — share only the tt:// connection links with users.${NC}"
     echo ""
 }
 
@@ -457,9 +426,9 @@ main() {
     info "This script will:"
     echo "   1. Install Docker and dependencies"
     echo "   2. Download TrustTunnel (latest release)"
-    echo "   3. Run the TrustTunnel setup wizard"
+    echo "   3. Run the TrustTunnel setup wizard (interactive)"
     echo "   4. Install TrustTunnel as a systemd service"
-    echo "   5. Deploy the web admin panel"
+    echo "   5. Deploy the web admin panel behind a camouflage site"
     echo ""
     ask "Continue? [Y/n]"
     read -r go
@@ -481,7 +450,7 @@ main() {
 
     sep
     echo ""
-    echo -e "  ${BOLD}Step 2/2 — Web Panel Setup${NC}"
+    echo -e "  ${BOLD}Step 2/2 — Web Panel + Camouflage Setup${NC}"
     echo ""
     collect_webui_config
     deploy_webui

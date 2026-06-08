@@ -5,33 +5,32 @@ services:
     build: ./backend
     restart: unless-stopped
     environment:
-      # Admin credentials for the web panel
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASS: ${ADMIN_PASS:-changeme}
-      # Flask session secret — set a long random string in .env
       SECRET_KEY: ${SECRET_KEY}
-      # TrustTunnel config paths (inside the container via volume below)
       VPN_TOML: /trusttunnel/vpn.toml
       HOSTS_TOML: /trusttunnel/hosts.toml
       CREDENTIALS_FILE: /trusttunnel/credentials
       TT_BINARY: /trusttunnel/trusttunnel_endpoint
-      # Your server's public IP or domain (used in connection links)
       SERVER_ADDRESS: ${SERVER_ADDRESS}
     volumes:
-      # Mount the directory where TrustTunnel is installed on the host
       - ${TRUSTTUNNEL_DIR:-/opt/trusttunnel}:/trusttunnel
     networks:
       - app
 
   frontend:
-    image: nginx:1.27-alpine
+    build: ./nginx
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      PANEL_PATH: ${PANEL_PATH:-manage}
+      DOMAIN: ${DOMAIN:-_}
+      USE_HTTPS: ${USE_HTTPS:-false}
     volumes:
-      - ./frontend:/usr/share/nginx/html:ro
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend/decoy:/usr/share/nginx/decoy:ro
+      - ./frontend/panel:/usr/share/nginx/panel:ro
       # Uncomment for Let's Encrypt:
       # - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:

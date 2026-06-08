@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StreamVault — Watch Free Movies &amp; Series Online</title>
+  <meta name="description" content="StreamVault — your favorite place to watch movies, series, documentaries and live TV for free. HD quality, no registration required." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --card: #1a1a24;
+      --border: #2a2a38;
+      --accent: #e50914;
+      --accent2: #ff6b35;
+      --text: #f0f0f0;
+      --muted: #888;
+      --r: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: linear-gradient(to bottom, rgba(10,10,15,0.98) 0%, rgba(10,10,15,0.8) 100%);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .logo-icon {
+      width: 30px; height: 30px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    .logo span { color: var(--accent); }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      list-style: none;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-right { display: flex; gap: 10px; align-items: center; }
+
+    .search-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      color: var(--text);
+      font-size: 13px;
+      width: 200px;
+      outline: none;
+    }
+
+    .search-bar::placeholder { color: var(--muted); }
+    .search-bar:focus { border-color: #555; }
+
+    .btn-nav {
+      padding: 7px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-signin { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-signin:hover { color: var(--text); }
+    .btn-join { background: var(--accent); color: #fff; }
+    .btn-join:hover { background: #c40812; }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      height: 520px;
+      display: flex;
+      align-items: flex-end;
+      padding: 48px;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to right, rgba(10,10,15,0.95) 35%, transparent 80%),
+        linear-gradient(to top, rgba(10,10,15,1) 0%, transparent 40%);
+      z-index: 1;
+    }
+
+    .hero-img {
+      position: absolute;
+      inset: 0;
+      background:
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%231a0a0a"/><stop offset="0.5" stop-color="%230d1525"/><stop offset="1" stop-color="%230a0a0f"/></linearGradient></defs><rect fill="url(%23g)" width="1200" height="520"/><circle cx="900" cy="200" r="250" fill="%23e50914" opacity="0.07"/><circle cx="800" cy="350" r="180" fill="%23ff6b35" opacity="0.05"/></svg>') center/cover;
+      z-index: 0;
+    }
+
+    /* Fake movie poster collage */
+    .hero-posters {
+      position: absolute;
+      right: -20px; top: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 0;
+      opacity: 0.6;
+      transform: perspective(800px) rotateY(-8deg);
+    }
+
+    .poster-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .poster-col:nth-child(2) { margin-top: -40px; }
+    .poster-col:nth-child(3) { margin-top: 30px; }
+
+    .poster {
+      width: 130px;
+      height: 190px;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .poster-inner {
+      width: 100%; height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      background: linear-gradient(135deg, var(--surface), var(--card));
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 560px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 em { font-style: normal; color: var(--accent); }
+
+    .hero p {
+      color: #bbb;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 28px;
+      max-width: 440px;
+    }
+
+    .hero-actions { display: flex; gap: 12px; align-items: center; }
+
+    .btn-play {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--accent);
+      color: #fff;
+      padding: 13px 28px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn-play:hover { background: #c40812; transform: scale(1.02); }
+
+    .btn-info {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      padding: 13px 24px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .btn-info:hover { background: rgba(255,255,255,0.18); }
+
+    .hero-meta { display: flex; gap: 16px; margin-top: 20px; align-items: center; }
+
+    .meta-tag {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    .meta-rating { color: #f5c518; font-weight: 700; font-size: 14px; }
+
+    /* ── SECTIONS ── */
+    .section { padding: 40px 32px 20px; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .section-title { font-size: 20px; font-weight: 700; }
+    .section-more { font-size: 13px; color: var(--accent); cursor: pointer; }
+    .section-more:hover { text-decoration: underline; }
+
+    /* ── CARDS ── */
+    .cards-row {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scrollbar-width: none;
+    }
+
+    .cards-row::-webkit-scrollbar { display: none; }
+
+    .card {
+      flex-shrink: 0;
+      width: 180px;
+      cursor: pointer;
+    }
+
+    .card:hover .card-thumb { transform: scale(1.03); border-color: #555; }
+    .card:hover .card-title { color: #fff; }
+
+    .card-thumb-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--r);
+      margin-bottom: 10px;
+    }
+
+    .card-thumb {
+      width: 100%; height: 260px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
+      border-radius: var(--r);
+      opacity: 0;
+      transition: opacity 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card:hover .card-overlay { opacity: 1; }
+
+    .play-btn-sm {
+      width: 44px; height: 44px;
+      background: rgba(229,9,20,0.9);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .card-badge {
+      position: absolute;
+      top: 8px; left: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      letter-spacing: 0.5px;
+    }
+
+    .card-badge.hd { background: #2563eb; }
+    .card-badge.new { background: #16a34a; }
+
+    .card-title { font-size: 13px; font-weight: 600; color: #ddd; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+    .card-rating { color: #f5c518; }
+
+    /* ── CATEGORIES ── */
+    .cats { padding: 20px 32px 40px; }
+    .cats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .cat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .cat-card:hover { border-color: #555; background: #20202c; }
+    .cat-card .cat-icon { font-size: 28px; margin-bottom: 8px; }
+    .cat-card .cat-name { font-size: 13px; font-weight: 600; }
+    .cat-card .cat-count { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── STATS BANNER ── */
+    .stats {
+      margin: 0 32px 40px;
+      background: linear-gradient(135deg, #1a0a0a, #0d1525);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 40px;
+      display: flex;
+      gap: 0;
+      justify-content: space-around;
+    }
+
+    .stat { text-align: center; }
+    .stat-num { font-size: 32px; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* ── WIDE CARD ── */
+    .wide-cards { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+    .wide-cards::-webkit-scrollbar { display: none; }
+
+    .wide-card {
+      flex-shrink: 0;
+      width: 320px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .wide-card:hover { border-color: #555; }
+
+    .wide-thumb {
+      height: 175px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 56px;
+      background: linear-gradient(135deg, #0d1525, #1a1a24);
+      position: relative;
+    }
+
+    .wide-duration {
+      position: absolute;
+      bottom: 8px; right: 10px;
+      background: rgba(0,0,0,0.7);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .wide-info { padding: 12px 14px; }
+    .wide-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .wide-sub { font-size: 12px; color: var(--muted); display: flex; gap: 8px; }
+
+    /* ── FOOTER ── */
+    footer {
+      margin-top: 60px;
+      border-top: 1px solid var(--border);
+      padding: 40px 32px 28px;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 32px;
+    }
+
+    .footer-brand p { font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.6; max-width: 260px; }
+
+    .footer-col h4 { font-size: 13px; font-weight: 700; margin-bottom: 14px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-col a { font-size: 13px; color: var(--muted); }
+    .footer-col a:hover { color: var(--text); }
+
+    .footer-bottom {
+      border-top: 1px solid var(--border);
+      margin: 24px 32px 0;
+      padding: 20px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .footer-bottom-links { display: flex; gap: 20px; }
+    .footer-bottom-links a:hover { color: var(--text); }
+
+    /* ── TICKER ── */
+    .ticker {
+      background: var(--accent);
+      padding: 8px 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .ticker-inner {
+      display: inline-block;
+      animation: ticker 40s linear infinite;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    @keyframes ticker {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hero { height: 420px; padding: 28px; }
+      .hero h1 { font-size: 32px; }
+      .hero-posters { display: none; }
+      footer { grid-template-columns: 1fr 1fr; }
+      .stats { padding: 24px; flex-wrap: wrap; gap: 20px; }
+      .section, .cats { padding: 24px 16px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div class="ticker">
+  <span class="ticker-inner">
+    🔴 LIVE NOW: Champions League Highlights &nbsp;·&nbsp; NEW: The Last Kingdom Season 6 &nbsp;·&nbsp; 4K Ultra HD available for Premium &nbsp;·&nbsp; New releases every Friday &nbsp;·&nbsp; 🔴 LIVE NOW: Champions League Highlights &nbsp;·&nbsp; NEW: The Last Kingdom Season 6 &nbsp;·&nbsp; 4K Ultra HD available for Premium &nbsp;·&nbsp; New releases every Friday &nbsp;·&nbsp;
+  </span>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">
+    <div class="logo-icon">▶</div>
+    Stream<span>Vault</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#">Home</a></li>
+    <li><a href="#">Movies</a></li>
+    <li><a href="#">Series</a></li>
+    <li><a href="#">Live TV</a></li>
+    <li><a href="#">Anime</a></li>
+    <li><a href="#">Kids</a></li>
+  </ul>
+  <div class="nav-right">
+    <input class="search-bar" type="text" placeholder="🔍  Search titles..." />
+    <button class="btn-nav btn-signin">Sign In</button>
+    <button class="btn-nav btn-join">Join Free</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-img"></div>
+  <div class="hero-bg"></div>
+  <div class="hero-posters">
+    <div class="poster-col">
+      <div class="poster"><div class="poster-inner">🏔️</div></div>
+      <div class="poster"><div class="poster-inner">🌊</div></div>
+      <div class="poster"><div class="poster-inner">🔥</div></div>
+    </div>
+    <div class="poster-col">
+      <div class="poster"><div class="poster-inner">🌌</div></div>
+      <div class="poster"><div class="poster-inner">🎭</div></div>
+      <div class="poster"><div class="poster-inner">⚔️</div></div>
+    </div>
+    <div class="poster-col">
+      <div class="poster"><div class="poster-inner">🤖</div></div>
+      <div class="poster"><div class="poster-inner">🎬</div></div>
+      <div class="poster"><div class="poster-inner">🌿</div></div>
+    </div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">⭐ Editor's Pick</div>
+    <h1>The <em>Infinite</em><br>Horizon</h1>
+    <p>An epic sci-fi adventure across the universe. When humanity discovers a signal from beyond the observable universe, one crew must answer the call — or face extinction.</p>
+    <div class="hero-actions">
+      <button class="btn-play">▶&nbsp; Watch Now</button>
+      <button class="btn-info">ℹ&nbsp; More Info</button>
+    </div>
+    <div class="hero-meta">
+      <span class="meta-tag">2024</span>
+      <span class="meta-tag">2h 38min</span>
+      <span class="meta-tag">Sci-Fi</span>
+      <span class="meta-tag">HD</span>
+      <span class="meta-rating">★ 8.4</span>
+    </div>
+  </div>
+</div>
+
+<!-- TRENDING -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">🔥 Trending Now</div>
+    <div class="section-more">See all →</div>
+  </div>
+  <div class="cards-row" id="trending"></div>
+</div>
+
+<!-- NEW RELEASES -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">🆕 New Releases</div>
+    <div class="section-more">See all →</div>
+  </div>
+  <div class="cards-row" id="newrel"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="stat-num">50K+</div><div class="stat-label">Movies &amp; Series</div></div>
+  <div class="stat"><div class="stat-num">4K</div><div class="stat-label">Ultra HD Quality</div></div>
+  <div class="stat"><div class="stat-num">120+</div><div class="stat-label">Countries</div></div>
+  <div class="stat"><div class="stat-num">24/7</div><div class="stat-label">Live TV Channels</div></div>
+  <div class="stat"><div class="stat-num">Free</div><div class="stat-label">No Subscription</div></div>
+</div>
+
+<!-- CONTINUE WATCHING -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">▶ Continue Watching</div>
+    <div class="section-more">My list →</div>
+  </div>
+  <div class="wide-cards" id="continue"></div>
+</div>
+
+<!-- CATEGORIES -->
+<div class="cats">
+  <div class="section-header" style="margin-bottom:16px">
+    <div class="section-title">Browse by Genre</div>
+  </div>
+  <div class="cats-grid">
+    <div class="cat-card"><div class="cat-icon">🎬</div><div class="cat-name">Action</div><div class="cat-count">3,421 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">😂</div><div class="cat-name">Comedy</div><div class="cat-count">2,887 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">😱</div><div class="cat-name">Horror</div><div class="cat-count">1,654 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">💘</div><div class="cat-name">Romance</div><div class="cat-count">2,103 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">🌌</div><div class="cat-name">Sci-Fi</div><div class="cat-count">1,299 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">🔍</div><div class="cat-name">Thriller</div><div class="cat-count">1,876 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">📜</div><div class="cat-name">Drama</div><div class="cat-count">4,512 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">🏆</div><div class="cat-name">Sport</div><div class="cat-count">988 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">🎌</div><div class="cat-name">Anime</div><div class="cat-count">2,340 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">🧒</div><div class="cat-name">Kids</div><div class="cat-count">1,120 titles</div></div>
+    <div class="cat-card"><div class="cat-icon">📺</div><div class="cat-name">Live TV</div><div class="cat-count">340 channels</div></div>
+    <div class="cat-card"><div class="cat-icon">🎵</div><div class="cat-name">Music</div><div class="cat-count">760 titles</div></div>
+  </div>
+</div>
+
+<!-- TOP SERIES -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">📺 Top Series</div>
+    <div class="section-more">See all →</div>
+  </div>
+  <div class="cards-row" id="series"></div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">
+    <div class="logo" style="font-size:18px">
+      <div class="logo-icon" style="width:24px;height:24px;font-size:11px">▶</div>
+      Stream<span>Vault</span>
+    </div>
+    <p>Your free streaming destination with over 50,000 movies, series, live TV channels and anime. Available on all devices, no subscription needed.</p>
+  </div>
+  <div class="footer-col">
+    <h4>Browse</h4>
+    <ul>
+      <li><a href="#">Movies</a></li>
+      <li><a href="#">Series</a></li>
+      <li><a href="#">Anime</a></li>
+      <li><a href="#">Live TV</a></li>
+      <li><a href="#">New Releases</a></li>
+    </ul>
+  </div>
+  <div class="footer-col">
+    <h4>Company</h4>
+    <ul>
+      <li><a href="#">About Us</a></li>
+      <li><a href="#">Blog</a></li>
+      <li><a href="#">Press</a></li>
+      <li><a href="#">Careers</a></li>
+      <li><a href="#">Contact</a></li>
+    </ul>
+  </div>
+  <div class="footer-col">
+    <h4>Help</h4>
+    <ul>
+      <li><a href="#">FAQ</a></li>
+      <li><a href="#">Help Center</a></li>
+      <li><a href="#">Device Support</a></li>
+      <li><a href="#">Report Issue</a></li>
+    </ul>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>© 2024 StreamVault Media Ltd. All rights reserved.</span>
+  <div class="footer-bottom-links">
+    <a href="#">Privacy Policy</a>
+    <a href="#">Terms of Service</a>
+    <a href="#">DMCA</a>
+    <a href="#">Cookie Settings</a>
+  </div>
+</div>
+
+<script>
+const MOVIES = [
+  { title: "Neon Requiem",        emoji: "🌆", year: 2024, genre: "Thriller",  rating: "8.1", badge: "HD"  },
+  { title: "Arctic Storm",        emoji: "🏔️", year: 2024, genre: "Action",   rating: "7.8", badge: "NEW" },
+  { title: "The Last Signal",     emoji: "📡", year: 2023, genre: "Sci-Fi",   rating: "8.6", badge: "HD"  },
+  { title: "Crimson Tide II",     emoji: "🌊", year: 2024, genre: "Drama",    rating: "7.4", badge: null  },
+  { title: "Ghost Protocol",      emoji: "👁️", year: 2024, genre: "Thriller", rating: "8.0", badge: "HD"  },
+  { title: "Ember Falls",         emoji: "🍂", year: 2023, genre: "Drama",    rating: "7.9", badge: null  },
+  { title: "Quantum Break",       emoji: "⚛️", year: 2024, genre: "Sci-Fi",   rating: "8.3", badge: "NEW" },
+  { title: "Shadow Protocol",     emoji: "🕵️", year: 2024, genre: "Action",   rating: "7.7", badge: "HD"  },
+  { title: "Abyss",               emoji: "🌑", year: 2023, genre: "Horror",   rating: "7.5", badge: null  },
+  { title: "Velocity",            emoji: "🚀", year: 2024, genre: "Action",   rating: "7.2", badge: "NEW" },
+];
+
+const SERIES = [
+  { title: "Dark Corridor",   emoji: "🏚️", year: 2024, genre: "Mystery",  rating: "9.1", badge: "NEW" },
+  { title: "The Syndicate",   emoji: "🕴️", year: 2023, genre: "Crime",    rating: "8.7", badge: "HD"  },
+  { title: "Orbital",         emoji: "🛸", year: 2024, genre: "Sci-Fi",  rating: "8.9", badge: "NEW" },
+  { title: "Wild Kingdom",    emoji: "🐆", year: 2024, genre: "Drama",   rating: "8.2", badge: null  },
+  { title: "Heist Club",      emoji: "💰", year: 2023, genre: "Thriller",rating: "8.5", badge: "HD"  },
+  { title: "Hollow Earth",    emoji: "🌍", year: 2024, genre: "Fantasy", rating: "8.0", badge: "NEW" },
+  { title: "Red Division",    emoji: "🎖️", year: 2023, genre: "War",     rating: "8.4", badge: null  },
+  { title: "Frequency",       emoji: "📻", year: 2024, genre: "Drama",   rating: "8.8", badge: "HD"  },
+];
+
+const CONTINUE = [
+  { title: "Orbital",       emoji: "🛸", genre: "Sci-Fi",   season: "S2 E4", pct: 67, dur: "42 min" },
+  { title: "Neon Requiem",  emoji: "🌆", genre: "Thriller", season: "2024",  pct: 31, dur: "1h 54min" },
+  { title: "The Syndicate", emoji: "🕴️", genre: "Crime",    season: "S1 E7", pct: 82, dur: "50 min" },
+  { title: "Frequency",     emoji: "📻", genre: "Drama",    season: "S3 E2", pct: 15, dur: "44 min" },
+];
+
+function makeCard(m) {
+  const badgeHtml = m.badge
+    ? `<div class="card-badge ${m.badge === 'HD' ? 'hd' : m.badge === 'NEW' ? 'new' : ''}">${m.badge}</div>`
+    : '';
+  return `
+    <div class="card">
+      <div class="card-thumb-wrap">
+        <div class="card-thumb">${m.emoji}</div>
+        <div class="card-overlay"><div class="play-btn-sm">▶</div></div>
+        ${badgeHtml}
+      </div>
+      <div class="card-title">${m.title}</div>
+      <div class="card-meta"><span>${m.year}</span><span>·</span><span>${m.genre}</span><span class="card-rating">★ ${m.rating}</span></div>
+    </div>`;
+}
+
+function makeWide(c) {
+  return `
+    <div class="wide-card">
+      <div class="wide-thumb">
+        ${c.emoji}
+        <div class="wide-duration">${c.dur}</div>
+      </div>
+      <div class="wide-info">
+        <div class="wide-title">${c.title}</div>
+        <div class="wide-sub"><span>${c.genre}</span><span>·</span><span>${c.season}</span></div>
+        <div style="margin-top:8px;background:#222;border-radius:3px;height:3px;overflow:hidden">
+          <div style="background:var(--accent);height:100%;width:${c.pct}%"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+document.getElementById("trending").innerHTML = MOVIES.map(makeCard).join("");
+document.getElementById("newrel").innerHTML = [...MOVIES].reverse().map(makeCard).join("");
+document.getElementById("series").innerHTML = SERIES.map(makeCard).join("");
+document.getElementById("continue").innerHTML = CONTINUE.map(makeWide).join("");
+
+// Fake "loading" flicker on search
+document.querySelector(".search-bar").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.target.value = "";
+    e.target.placeholder = "No results found";
+    setTimeout(() => { e.target.placeholder = "🔍  Search titles..."; }, 1500);
+  }
+});
+</script>
+</body>
+</html>
