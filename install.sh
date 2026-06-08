@@ -488,7 +488,7 @@ collect_webui_config() {
     default_path=$(openssl rand -hex 6 2>/dev/null || tr -dc 'a-z0-9' < /dev/urandom | head -c 12)
 
     ask "$(t ask_secret_path) [${default_path}]:"
-    echo -e "  ${DIM}$(t panel_url_hint) https://${SERVER_ADDRESS}/${default_path}/${NC}"
+    echo -e "  ${DIM}$(t panel_url_hint) http://${SERVER_ADDRESS}/${default_path}/${NC}"
     read -r input
     PANEL_PATH="${input:-$default_path}"
     PANEL_PATH="${PANEL_PATH#/}"; PANEL_PATH="${PANEL_PATH%/}"
@@ -550,6 +550,7 @@ SECRET_KEY=${PANEL_SECRET_KEY}
 SERVER_ADDRESS=${SERVER_ADDRESS}
 TRUSTTUNNEL_DIR=${TT_INSTALL_DIR}
 PANEL_PATH=${PANEL_PATH}
+CREDENTIALS_FILE=${CREDS_FILE}
 EOF
     success "$(t deploy_env_ok)"
 
@@ -564,8 +565,8 @@ EOF
 #  Summary
 # ─────────────────────────────────────────────
 print_summary() {
-    # TrustTunnel handles TLS on port 443, so the site is always HTTPS
-    local base_url="https://${SERVER_ADDRESS}"
+    # nginx serves on port 80 (plain HTTP); TrustTunnel handles TLS on port 443 for VPN only
+    local base_url="http://${SERVER_ADDRESS}"
     local panel_url="${base_url}/${PANEL_PATH}/"
 
     echo ""
