@@ -1,77 +1,56 @@
 # TrustTunnel WebUI
 
-Веб-панель для управления пользователями TrustTunnel VPN.
+Веб-панель администратора для [TrustTunnel VPN](https://github.com/TrustTunnel/TrustTunnel) с сайтом-камуфляжем.
 
-## Возможности
+## Установка
 
-- Вход по логину/паролю
-- Добавление пользователей (вызывает `trusttunnel_endpoint` и возвращает `tt://` ссылку)
-- Удаление пользователей
-- Копирование ссылки подключения + QR-код
-
-## Установка на сервере
-
-### 1. Клонируйте репозиторий
+Одна команда — полная установка на чистый Ubuntu/Debian сервер:
 
 ```bash
-git clone https://github.com/iamnovye/trusttunnel-webui.git /opt/trusttunnel-webui
-cd /opt/trusttunnel-webui
+bash <(curl -Ls https://raw.githubusercontent.com/iamnovye/trusttunnel-webui/main/install.sh)
 ```
 
-### 2. Создайте `.env`
+Скрипт выполнит:
+1. Установит Docker и зависимости
+2. Скачает TrustTunnel (последний релиз)
+3. Запустит мастер настройки TrustTunnel (порт 443, сертификат, пользователи)
+4. Установит TrustTunnel как systemd-сервис
+5. Развернёт веб-панель за сайтом-камуфляжем StreamVault
+
+Поддерживает **русский и английский** языки (выбор в начале установки).
+
+## Что получится
+
+| Адрес | Что показывает |
+|---|---|
+| `http://ваш-домен/` | Фейковый видеохостинг StreamVault (виден всем) |
+| `http://ваш-домен/<секретный-путь>/` | Панель администратора (только вы) |
+| Порт 443 | TrustTunnel VPN |
+
+## Панель администратора
+
+- Добавление/удаление VPN-пользователей
+- Генерация `tt://` ссылок и QR-кодов для подключения клиентам
+- Логин и пароль задаются при установке
+
+## Управление после установки
 
 ```bash
-cp .env.example .env
-nano .env
+# Логи
+docker compose -f /opt/trusttunnel-webui/docker-compose.yml logs -f
+
+# Перезапуск панели
+docker compose -f /opt/trusttunnel-webui/docker-compose.yml restart
+
+# Статус TrustTunnel
+systemctl status trusttunnel
 ```
 
-Заполните:
-- `ADMIN_USER` / `ADMIN_PASS` — ваши учётные данные для входа в панель
-- `SECRET_KEY` — длинная случайная строка (`openssl rand -hex 32`)
-- `SERVER_ADDRESS` — публичный IP или домен сервера (например `vpn.example.com`)
-- `TRUSTTUNNEL_DIR` — путь где установлен TrustTunnel на хосте (по умолчанию `/opt/trusttunnel`)
-
-### 3. Запустите
-
-```bash
-docker compose up -d
-```
-
-Панель откроется на `http://your-server-ip`.
-
-### 4. HTTPS (опционально, но рекомендуется)
-
-```bash
-apt install certbot python3-certbot-nginx
-certbot certonly --nginx -d yourdomain.com
-
-# Раскомментируйте HTTPS блок в nginx/nginx.conf
-# и HTTP redirect, затем:
-docker compose restart frontend
-```
-
-## Структура файлов TrustTunnel
-
-Ожидается что в `TRUSTTUNNEL_DIR` находятся:
+## Структура репозитория
 
 ```
-/opt/trusttunnel/
-  trusttunnel_endpoint   # бинарный файл
-  vpn.toml               # конфиг endpoint
-  hosts.toml             # TLS hosts конфиг
-  credentials            # файл с пользователями (user:pass)
+backend/   — Flask API (управление пользователями, генерация ссылок)
+frontend/  — Статика (панель + сайт-камуфляж StreamVault)
+nginx/     — nginx конфиг (HTTP на порту 80)
+install.sh — Установщик с выбором языка
 ```
-
-## Переменные окружения backend
-
-| Переменная | По умолчанию | Описание |
-|---|---|---|
-| `ADMIN_USER` | `admin` | Логин для панели |
-| `ADMIN_PASS` | `changeme` | Пароль для панели |
-| `SECRET_KEY` | случайный | Flask session secret |
-| `SERVER_ADDRESS` | — | IP/домен для генерации ссылок |
-| `TRUSTTUNNEL_DIR` | `/opt/trusttunnel` | Папка TrustTunnel на хосте |
-| `VPN_TOML` | `/trusttunnel/vpn.toml` | Путь внутри контейнера |
-| `HOSTS_TOML` | `/trusttunnel/hosts.toml` | Путь внутри контейнера |
-| `CREDENTIALS_FILE` | `/trusttunnel/credentials` | Путь внутри контейнера |
-| `TT_BINARY` | `/trusttunnel/trusttunnel_endpoint` | Путь бинарника |
