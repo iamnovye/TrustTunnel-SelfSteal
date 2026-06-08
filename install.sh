@@ -244,6 +244,7 @@ choose_language() {
 TT_INSTALL_DIR="/opt/trusttunnel"
 WEBUI_DIR="/opt/trusttunnel-webui"
 WEBUI_REPO="https://github.com/iamnovye/trusttunnel-webui"
+WEBUI_BRANCH="claude/eager-newton-t257ev"
 TT_GITHUB="https://github.com/TrustTunnel/TrustTunnel"
 
 ARCH=""
@@ -542,7 +543,7 @@ deploy_webui() {
         git -C "$WEBUI_DIR" pull --ff-only origin main 2>/dev/null || true
     else
         info "$(t deploy_cloning)"
-        git clone --depth=1 "$WEBUI_REPO" "$WEBUI_DIR" \
+        git clone --depth=1 --branch "$WEBUI_BRANCH" "$WEBUI_REPO" "$WEBUI_DIR" \
             || die "$(t deploy_clone_fail)"
     fi
 
@@ -585,7 +586,7 @@ setup_https() {
         -d "$PANEL_DOMAIN" \
         || die "$(t https_fail)"
 
-    (crontab -l 2>/dev/null; \
+    (crontab -l 2>/dev/null || true; \
      echo "0 3 * * * certbot renew --quiet && docker compose -f $WEBUI_DIR/docker-compose.yml restart frontend") \
         | sort -u | crontab -
 
