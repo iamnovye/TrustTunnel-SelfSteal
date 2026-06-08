@@ -422,6 +422,32 @@ run_setup_wizard() {
     cd "$TT_INSTALL_DIR"
     ./setup_wizard || die "$(t wizard_fail)"
     success "$(t wizard_ok)"
+
+    patch_reverse_proxy
+}
+
+# Append [reverse_proxy] to vpn.toml so TrustTunnel forwards non-VPN
+# HTTPS traffic to the local nginx decoy site on port 8080.
+patch_reverse_proxy() {
+    local vpn_toml="$TT_INSTALL_DIR/vpn.toml"
+    [[ ! -f "$vpn_toml" ]] && return 0
+
+    if grep -q '\[reverse_proxy\]' "$vpn_toml" 2>/dev/null; then
+        return 0  # already patched
+    fi
+
+    cat >> "$vpn_toml" <<'EOF'
+
+# Non-VPN HTTPS traffic is forwarded to the local decoy/panel nginx.
+[reverse_proxy]
+server_address = "127.0.0.1:8080"
+EOF
+
+    if [[ "$LANG_CHOICE" == "ru" ]]; then
+        success "vpn.toml: добавлен [reverse_proxy] → nginx на 127.0.0.1:8080"
+    else
+        success "vpn.toml: added [reverse_proxy] → nginx on 127.0.0.1:8080"
+    fi
 }
 
 # ─────────────────────────────────────────────
@@ -483,19 +509,6 @@ collect_webui_config() {
     read -r input
     PANEL_DOMAIN="${input:-$SERVER_ADDRESS}"
 
-    # ── HTTPS ──
-    echo ""
-    if [[ "$PANEL_DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || [[ "$PANEL_DOMAIN" == "_" ]]; then
-        warn "$(t https_no_domain)"
-        USE_HTTPS="false"
-    else
-        ask "$(t ask_https) ${PANEL_DOMAIN}$(t ask_https_suffix)"
-        read -r input
-        if [[ ! "$input" =~ ^[Nn]$ ]]; then
-            USE_HTTPS="true"
-        fi
-    fi
-
     # ── Secret panel path ──
     echo ""
     echo -e "  ${BOLD}$(t decoy_title)${NC}"
@@ -554,52 +567,25 @@ SECRET_KEY=${PANEL_SECRET_KEY}
 SERVER_ADDRESS=${SERVER_ADDRESS}
 TRUSTTUNNEL_DIR=${TT_INSTALL_DIR}
 PANEL_PATH=${PANEL_PATH}
-DOMAIN=${PANEL_DOMAIN}
-USE_HTTPS=${USE_HTTPS}
 EOF
     success "$(t deploy_env_ok)"
 
-    if [[ "$USE_HTTPS" == "true" ]]; then
-        setup_https
-        sed -i 's|# - /etc/letsencrypt|- /etc/letsencrypt|g' "$WEBUI_DIR/docker-compose.yml"
-    fi
+    # Restart TrustTunnel so it picks up the [reverse_proxy] change in vpn.toml
+    systemctl restart trusttunnel 2>/dev/null || true
 
     info "$(t deploy_starting)"
     cd "$WEBUI_DIR"
-    docker compose pull --quiet 2>/dev/null || true
     docker compose up -d --build
 
     success "$(t deploy_ok)"
-}
-
-setup_https() {
-    info "$(t https_obtaining) ${PANEL_DOMAIN}..."
-
-    if ! command -v certbot &>/dev/null; then
-        apt-get install -y -qq certbot
-    fi
-
-    certbot certonly --standalone \
-        --non-interactive \
-        --agree-tos \
-        --register-unsafely-without-email \
-        -d "$PANEL_DOMAIN" \
-        || die "$(t https_fail)"
-
-    (crontab -l 2>/dev/null || true; \
-     echo "0 3 * * * certbot renew --quiet && docker compose -f $WEBUI_DIR/docker-compose.yml restart frontend") \
-        | sort -u | crontab -
-
-    success "$(t https_ok) $PANEL_DOMAIN"
 }
 
 # ─────────────────────────────────────────────
 #  Summary
 # ─────────────────────────────────────────────
 print_summary() {
-    local proto="http"
-    [[ "$USE_HTTPS" == "true" ]] && proto="https"
-    local base_url="${proto}://${PANEL_DOMAIN}"
+    # TrustTunnel handles TLS on port 443, so the site is always HTTPS
+    local base_url="https://${SERVER_ADDRESS}"
     local panel_url="${base_url}/${PANEL_PATH}/"
 
     echo ""
