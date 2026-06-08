@@ -607,6 +607,10 @@ print_summary() {
 #  Main
 # ─────────────────────────────────────────────
 main() {
+    # When run via bash <(curl ...), stdin is the pipe with the script itself.
+    # Redirect stdin to the terminal so read commands work interactively.
+    exec < /dev/tty
+
     clear
     echo ""
     echo -e "${CYAN}${BOLD}"
