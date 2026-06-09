@@ -1,82 +1,86 @@
 # TrustTunnel | Self-steal
 
-Веб-панель администратора для [TrustTunnel VPN](https://github.com/TrustTunnel/TrustTunnel) с сайтом-камуфляжем.
+**Admin web panel for [TrustTunnel VPN](https://github.com/TrustTunnel/TrustTunnel) with a camouflage decoy site.**
 
-**Автор:** [@iamnovye](https://t.me/iamnovye) · [Instagram](https://www.instagram.com/iamnovye)
+**Author:** [@iamnovye](https://t.me/iamnovye) · [Instagram](https://www.instagram.com/iamnovye)
 
-## Установка
+🇷🇺 [Читать на русском](README.ru.md)
 
-Одна команда — полная установка на чистый Ubuntu/Debian сервер:
+---
+
+## Installation
+
+One command — full installation on a clean Ubuntu/Debian server:
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/iamnovye/trusttunnel-webui/main/install.sh)
 ```
 
-Скрипт выполнит:
-1. Установит Docker и зависимости
-2. Скачает TrustTunnel (последний релиз)
-3. Запустит мастер настройки TrustTunnel — нужно будет ответить на вопросы (см. раздел ниже)
-4. Установит TrustTunnel как systemd-сервис
-5. Развернёт веб-панель за сайтом-камуфляжем StreamVault
+The script will:
+1. Install Docker and dependencies
+2. Download TrustTunnel (latest release)
+3. Run the TrustTunnel setup wizard (see question guide below)
+4. Install TrustTunnel as a systemd service
+5. Deploy the web admin panel behind the StreamVault camouflage site
 
-Поддерживает **русский и английский** языки.
+Supports **English and Russian** languages.
 
-## Вопросы мастера настройки
+## Setup Wizard Questions
 
-Мастер настройки TrustTunnel задаёт вопросы на **английском языке**. Ниже — все вопросы по порядку:
+The TrustTunnel setup wizard runs in **English**. All questions in order:
 
-| Вопрос | Рекомендуемый ответ |
+| Question | Recommended answer |
 |---|---|
 | `The address to listen on` | `0.0.0.0:443` → Enter |
-| `Path to the credentials file` | Enter (по умолчанию) |
-| `Username` | имя первого VPN-пользователя |
-| `Password` | пароль первого VPN-пользователя |
-| `Add one more user?` | `yes` или `no` |
-| `Path to the rules file` | Enter (по умолчанию) |
+| `Path to the credentials file` | Enter (default) |
+| `Username` | first VPN user's name |
+| `Password` | first VPN user's password |
+| `Add one more user?` | `yes` or `no` |
+| `Path to the rules file` | Enter (default) |
 | `Do you want to configure connection filtering rules?` | `no` → Enter |
-| `Path to a file to store the library settings` | Enter (по умолчанию) |
-| `How would you like to create a certificate?` | Let's Encrypt (нужен домен) или самоподписанный |
-| `Enter your domain name` | ваш домен |
-| `Enter your email address` | ваш email (для уведомлений LE) |
+| `Path to a file to store the library settings` | Enter (default) |
+| `How would you like to create a certificate?` | Let's Encrypt (requires domain) or self-signed |
+| `Enter your domain name` | your domain |
+| `Enter your email address` | your email (for LE notifications) |
 | `Select challenge method` | HTTP-01 → Enter |
 | `Use Let's Encrypt staging environment for testing?` | `no` → Enter |
 | `Do you want to configure alternative SNIs?` | `no` → Enter |
-| `Path to a file to store the TLS hosts settings` | Enter (по умолчанию) |
+| `Path to a file to store the TLS hosts settings` | Enter (default) |
 
-После мастера скрипт автоматически задаст несколько вопросов для настройки веб-панели (адрес сервера, секретный путь, логин и пароль).
+After the wizard, the installer will ask a few questions to configure the web panel (server address, secret path, admin login and password).
 
-## Что получится
+## What You Get
 
-| Адрес | Что показывает |
+| Address | What it shows |
 |---|---|
-| `http://домен/` | Фейковый видеохостинг StreamVault (виден всем) |
-| `https://домен:8443/<секретный-путь>/` | Панель администратора по HTTPS (если выбран Let's Encrypt) |
-| `http://домен/<секретный-путь>/` | Панель администратора по HTTP |
-| Порт 443 | TrustTunnel VPN |
+| `http://domain/` | Fake StreamVault video hosting (visible to everyone) |
+| `https://domain:8443/<secret-path>/` | Admin panel over HTTPS (if Let's Encrypt was chosen) |
+| `http://domain/<secret-path>/` | Admin panel over HTTP |
+| Port 443 | TrustTunnel VPN |
 
-> **Важно:** панель работает по `http://` (или `https://:8443`). Если браузер принудительно открывает HTTPS — очистите HSTS: в Chrome откройте `chrome://net-internals/#hsts`, введите домен и нажмите Delete.
+> **Note:** The panel runs on `http://` (or `https://:8443`). If the browser forces HTTPS — clear HSTS: in Chrome open `chrome://net-internals/#hsts`, enter the domain and click Delete.
 
-## Панель администратора
+## Admin Panel Features
 
-- Добавление/удаление VPN-пользователей
-- Генерация `tt://` ссылок и QR-кодов для подключения
-- Логин и пароль задаются при установке
-- Имена пользователей: только буквы, цифры, `_`, `-`, `.` (не email-формат)
+- Add / remove VPN users
+- Generate `tt://` links and QR codes for connecting
+- Login and password set during installation
+- Usernames: letters, digits, `_`, `-`, `.` only (not email format)
 
-## Управление
+## Management
 
 ```bash
-# Логи
+# Logs
 docker compose -f /opt/trusttunnel-webui/docker-compose.yml logs -f
 
-# Перезапуск панели
+# Restart panel
 docker compose -f /opt/trusttunnel-webui/docker-compose.yml restart
 
-# Статус TrustTunnel
+# TrustTunnel status
 systemctl status trusttunnel
 ```
 
-## Полное удаление
+## Full Uninstall
 
 ```bash
 systemctl stop trusttunnel
@@ -87,11 +91,11 @@ docker compose -f /opt/trusttunnel-webui/docker-compose.yml down 2>/dev/null || 
 rm -rf /opt/trusttunnel /opt/trusttunnel-webui /trusttunnel
 ```
 
-## Структура репозитория
+## Repository Structure
 
 ```
-backend/   — Flask API (управление пользователями, генерация ссылок)
-frontend/  — Статика (панель + сайт-камуфляж StreamVault)
-nginx/     — nginx конфиг (HTTP 80 + HTTPS 8443)
-install.sh — Установщик с выбором языка EN/RU
+backend/   — Flask API (user management, link generation)
+frontend/  — Static files (panel + StreamVault decoy site)
+nginx/     — nginx config (HTTP 80 + HTTPS 8443)
+install.sh — Installer with EN/RU language selection
 ```
