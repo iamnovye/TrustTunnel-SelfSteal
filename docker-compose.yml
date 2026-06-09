@@ -32,6 +32,7 @@ services:
       - ./frontend/decoy:/usr/share/nginx/decoy:ro
       - ./frontend/panel:/usr/share/nginx/panel:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ${TRUSTTUNNEL_DIR:-/opt/trusttunnel}/certs:/trusttunnel/certs:ro
     depends_on:
       - backend
     networks:
