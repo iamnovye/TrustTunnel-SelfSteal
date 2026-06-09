@@ -1,6 +1,6 @@
 # TrustTunnel | Self-steal
 
-**Admin web panel for [TrustTunnel VPN](https://github.com/TrustTunnel/TrustTunnel) with a camouflage decoy site.**
+**Admin web panel for [TrustTunnel](https://github.com/TrustTunnel/TrustTunnel) with a camouflage decoy site.**
 
 **Author:** [@iamnovye](https://t.me/iamnovye) · [Instagram](https://www.instagram.com/iamnovye)
 
