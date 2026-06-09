@@ -259,6 +259,8 @@ SERVER_ADDRESS=""
 PANEL_PATH=""
 USE_HTTPS="false"
 CREDS_FILE=""
+SSL_CERT=""
+SSL_KEY=""
 
 # ─────────────────────────────────────────────
 #  Preflight checks
@@ -345,6 +347,8 @@ download_trusttunnel() {
         ask "$(t ask_reinstall)"
         read -r reinstall
         [[ "$reinstall" =~ ^[Yy]$ ]] || return 0
+        # Stop the service so the binary is not "Text file busy"
+        systemctl stop trusttunnel 2>/dev/null || true
     fi
 
     mkdir -p "$TT_INSTALL_DIR"
@@ -473,11 +477,25 @@ detect_config_paths() {
     creds=$(grep -E '^\s*credentials_file\s*=' "$vpn_toml" 2>/dev/null \
         | head -1 | sed 's/.*=\s*"\(.*\)".*/\1/' || echo "")
     if [[ -n "$creds" ]]; then
-        # Make absolute if relative
         [[ "$creds" != /* ]] && creds="$TT_INSTALL_DIR/$creds"
         CREDS_FILE="$creds"
     fi
     info "$(t creds_detected) $CREDS_FILE"
+
+    # Auto-detect Let's Encrypt certificate from hosts.toml
+    local hosts_toml="$TT_INSTALL_DIR/hosts.toml"
+    if [[ -f "$hosts_toml" ]]; then
+        local cert_path
+        cert_path=$(grep -E '^\s*cert_chain_path\s*=' "$hosts_toml" 2>/dev/null \
+            | head -1 | sed 's/.*=\s*"\(.*\)".*/\1/' || echo "")
+        local key_path
+        key_path=$(grep -E '^\s*private_key_path\s*=' "$hosts_toml" 2>/dev/null \
+            | head -1 | sed 's/.*=\s*"\(.*\)".*/\1/' || echo "")
+        if [[ -n "$cert_path" && -f "$cert_path" && -n "$key_path" && -f "$key_path" ]]; then
+            SSL_CERT="$cert_path"
+            SSL_KEY="$key_path"
+        fi
+    fi
 }
 
 # ─────────────────────────────────────────────
@@ -572,6 +590,8 @@ SERVER_ADDRESS=${SERVER_ADDRESS}
 TRUSTTUNNEL_DIR=${TT_INSTALL_DIR}
 PANEL_PATH=${PANEL_PATH}
 CREDENTIALS_FILE=${CREDS_FILE}
+SSL_CERT=${SSL_CERT}
+SSL_KEY=${SSL_KEY}
 EOF
     success "$(t deploy_env_ok)"
 
@@ -586,9 +606,12 @@ EOF
 #  Summary
 # ─────────────────────────────────────────────
 print_summary() {
-    # nginx serves on port 80 (plain HTTP); TrustTunnel handles TLS on port 443 for VPN only
     local base_url="http://${SERVER_ADDRESS}"
     local panel_url="${base_url}/${PANEL_PATH}/"
+    # If LE cert was detected, panel is also available via HTTPS on port 8443
+    if [[ -n "$SSL_CERT" ]]; then
+        panel_url="https://${SERVER_ADDRESS}:8443/${PANEL_PATH}/"
+    fi
 
     echo ""
     echo -e "${GREEN}${BOLD}"

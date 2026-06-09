@@ -23,11 +23,15 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "8443:8443"
     environment:
       PANEL_PATH: ${PANEL_PATH:-manage}
+      SSL_CERT: ${SSL_CERT:-}
+      SSL_KEY: ${SSL_KEY:-}
     volumes:
       - ./frontend/decoy:/usr/share/nginx/decoy:ro
       - ./frontend/panel:/usr/share/nginx/panel:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
     networks:
