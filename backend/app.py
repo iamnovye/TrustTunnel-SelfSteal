@@ -77,6 +77,24 @@ def _remove_user_from_credentials(username):
             f.write(f'[[client]]\nusername = "{u["username"]}"\npassword = "{u["password"]}"\n\n')
 
 
+def _reload_trusttunnel():
+    """Send SIGHUP to trusttunnel_endpoint process so it reloads credentials."""
+    import signal as _signal
+    try:
+        for pid_str in os.listdir("/proc"):
+            if not pid_str.isdigit():
+                continue
+            try:
+                with open(f"/proc/{pid_str}/comm") as f:
+                    if "trusttunnel_end" in f.read():
+                        os.kill(int(pid_str), _signal.SIGHUP)
+                        return
+            except OSError:
+                continue
+    except Exception:
+        pass
+
+
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json(force=True)
@@ -115,6 +133,7 @@ def add_user():
         return jsonify({"error": "User already exists"}), 409
 
     _add_user_to_credentials(username, password)
+    _reload_trusttunnel()
 
     link = _generate_link(username)
     return jsonify({"ok": True, "username": username, "link": link}), 201
@@ -126,6 +145,7 @@ def delete_user(username):
     if not _user_exists(username):
         return jsonify({"error": "User not found"}), 404
     _remove_user_from_credentials(username)
+    _reload_trusttunnel()
     return jsonify({"ok": True})
 
 

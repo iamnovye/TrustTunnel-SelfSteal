@@ -4,6 +4,7 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    pid: "host"
     environment:
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASS: ${ADMIN_PASS:-changeme}
