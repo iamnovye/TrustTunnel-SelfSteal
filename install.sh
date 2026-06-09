@@ -160,7 +160,7 @@ t() {
             tt_extracted)       echo "TrustTunnel extracted to" ;;
 
             wizard_title)       echo "  TrustTunnel Setup Wizard" ;;
-            wizard_hint)        echo "  The wizard will ask about listen address, certificates,\n  credentials file and connection rules." ;;
+            wizard_hint)        echo "  Wizard questions (accept defaults unless noted):\n  listen address (0.0.0.0:443), credentials file, username+password,\n  add more users, rules file, filter rules (no), vpn.toml path,\n  certificate type (Let's Encrypt / self-signed), domain, email,\n  challenge method (HTTP-01), staging (no), alt SNIs (no), hosts.toml path." ;;
             wizard_exists)      echo "TrustTunnel config already exists (vpn.toml found)" ;;
             ask_rerun_wizard)   echo "Re-run setup wizard? [y/N]" ;;
             wizard_fail)        echo "setup_wizard failed" ;;
@@ -397,23 +397,39 @@ run_setup_wizard() {
         echo ""
         echo -e "${YELLOW}${BOLD}  Шпаргалка — что спросит мастер настройки:${NC}"
         sep
-        echo -e "  ${BOLD}Listen address${NC} — адрес и порт, на котором слушает VPN"
-        echo -e "    ${DIM}Рекомендуется: 0.0.0.0:443${NC}"
+        echo -e "  ${BOLD}The address to listen on${NC} — порт VPN-сервера"
+        echo -e "    ${DIM}Рекомендуется: 0.0.0.0:443  → Enter${NC}"
         echo ""
-        echo -e "  ${BOLD}Credentials file path${NC} — путь к файлу с логинами пользователей"
-        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию (Enter)${NC}"
+        echo -e "  ${BOLD}Path to the credentials file${NC} — файл с логинами VPN-пользователей"
+        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию → Enter${NC}"
         echo ""
         echo -e "  ${BOLD}Username / Password${NC} — логин и пароль первого VPN-пользователя"
-        echo -e "    ${DIM}Можно добавить несколько, ответив 'y' на 'Add one more user?'${NC}"
         echo ""
-        echo -e "  ${BOLD}Rules file path${NC} — файл правил фильтрации подключений"
-        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию (Enter)${NC}"
+        echo -e "  ${BOLD}Add one more user?${NC} — добавить ещё одного пользователя?"
+        echo -e "    ${DIM}Введите 'yes' или 'no'${NC}"
         echo ""
-        echo -e "  ${BOLD}Certificate${NC} — сертификат TLS для VPN-трафика"
-        echo -e "    ${DIM}1 = Let's Encrypt (нужен домен), 2 = самоподписанный, 3 = свой файл${NC}"
+        echo -e "  ${BOLD}Path to the rules file${NC} — файл правил фильтрации"
+        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию → Enter${NC}"
         echo ""
-        echo -e "  ${BOLD}Settings / Hosts file path${NC} — пути конфиг-файлов"
-        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию (Enter)${NC}"
+        echo -e "  ${BOLD}Do you want to configure connection filtering rules?${NC}"
+        echo -e "    ${DIM}Рекомендуется: no → Enter${NC}"
+        echo ""
+        echo -e "  ${BOLD}Path to a file to store the library settings${NC} — файл настроек VPN"
+        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию → Enter${NC}"
+        echo ""
+        echo -e "  ${BOLD}How would you like to create a certificate?${NC} — тип TLS-сертификата"
+        echo -e "    ${DIM}Выберите: Let's Encrypt (нужен домен) / самоподписанный / свой файл${NC}"
+        echo ""
+        echo -e "  ${BOLD}Enter your domain name${NC} — домен (при выборе Let's Encrypt)"
+        echo -e "  ${BOLD}Enter your email address${NC} — email для уведомлений Let's Encrypt"
+        echo -e "  ${BOLD}Select challenge method${NC} — метод проверки; выберите HTTP-01 → Enter"
+        echo -e "  ${BOLD}Use Let's Encrypt staging environment?${NC} — тестовая среда: no → Enter"
+        echo ""
+        echo -e "  ${BOLD}Do you want to configure alternative SNIs?${NC}"
+        echo -e "    ${DIM}Рекомендуется: no → Enter${NC}"
+        echo ""
+        echo -e "  ${BOLD}Path to a file to store the TLS hosts settings${NC} — файл хостов"
+        echo -e "    ${DIM}Рекомендуется: оставить по умолчанию → Enter${NC}"
         sep
         echo ""
         echo -e "  ${DIM}Мастер настройки запускается на английском — это нормально.${NC}"
