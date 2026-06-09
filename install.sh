@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # TrustTunnel + WebUI — one-command installer
 # Usage: bash <(curl -Ls https://raw.githubusercontent.com/iamnovye/trusttunnel-webui/main/install.sh)
+#
+# Author: @iamnovye
+# Instagram: https://www.instagram.com/iamnovye
+# Telegram:  https://t.me/iamnovye
 
 set -euo pipefail
 
